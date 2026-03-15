@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { t, type Lang } from '@/lib/translations';
 import type { Page } from '@/pages/Index';
 import { motion } from 'framer-motion';
@@ -14,6 +15,31 @@ const floatingEmojis = ['⚽', '🏸', '🏃‍♂️', '🏐', '♟️', '🚲'
 
 export default function EventHome({ lang, setPage, customGames = [] }: EventHomeProps) {
   const allGames = getActiveGames([], customGames);
+
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    // March 25, 2026 23:59:59
+    const targetDate = new Date('2026-03-25T23:59:59').getTime();
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const difference = targetDate - now;
+
+      if (difference <= 0) {
+        clearInterval(interval);
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-8 py-4">
@@ -56,13 +82,26 @@ export default function EventHome({ lang, setPage, customGames = [] }: EventHome
             <div className="flex items-center gap-2">
               <Calendar size={20} className="text-destructive" />
               <span className="font-bold text-sm md:text-base text-destructive">
-                {lang === 'EN' ? 'Important Target Dates' : 'महत्वपूर्ण लक्ष्य तिथियाँ'}
+                {lang === 'EN' ? 'Registration Closes In:' : 'पंजीकरण बंद होगा:'}
               </span>
             </div>
-            <p className="text-xs md:text-sm font-semibold text-center text-foreground/80">
+            <div className="flex gap-2 text-center mt-1">
+              {[
+                { value: timeLeft.days, label: lang === 'EN' ? 'Days' : 'दिन' },
+                { value: timeLeft.hours, label: lang === 'EN' ? 'Hrs' : 'घंटे' },
+                { value: timeLeft.minutes, label: lang === 'EN' ? 'Mins' : 'मिनट' },
+                { value: timeLeft.seconds, label: lang === 'EN' ? 'Secs' : 'सेकंड' }
+              ].map((item, i) => (
+                <div key={i} className="bg-destructive/10 rounded-lg p-2 min-w-[50px] shadow-sm">
+                  <p className="text-xl font-black font-mono leading-none">{item.value.toString().padStart(2, '0')}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider mt-1">{item.label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-center text-foreground/70 mt-2">
               {lang === 'EN' 
-                ? 'Competition is on the 29th. You have to register until the 25th.'
-                : 'प्रतियोगिता 29 तारीख को है। आपको 25 तारीख तक पंजीकरण करना होगा।'}
+                ? 'Competition begins on the 29th!'
+                : 'प्रतियोगिता 29 तारीख से शुरू होगी!'}
             </p>
           </div>
 

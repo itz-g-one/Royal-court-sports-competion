@@ -1,18 +1,20 @@
 import { t, type Lang } from '@/lib/translations';
 import type { FormData } from '@/pages/Index';
-import { GAMES_DB } from '@/lib/gamesData';
+import { GAMES_DB, type Game } from '@/lib/gamesData';
 
 interface ConfirmationProps {
   lang: Lang;
   formData: FormData;
   selectedGames: string[];
   regId: string;
+  customGames?: Game[];
   onReset: () => void;
 }
 
-export default function Confirmation({ lang, formData, selectedGames, regId, onReset }: ConfirmationProps) {
+export default function Confirmation({ lang, formData, selectedGames, regId, customGames = [], onReset }: ConfirmationProps) {
   const handleShare = async () => {
-    const text = `🏆 I registered for Royal Court Sports 2026!\nID: ${regId}\nGames: ${selectedGames.map(id => GAMES_DB.find(g => g.id === id)?.nameEn).join(', ')}`;
+    const allGames = [...GAMES_DB, ...customGames];
+    const text = `🏆 I registered for Royal Court Sports 2026!\nID: ${regId}\nGames: ${selectedGames.map(id => allGames.find(g => g.id === id)?.nameEn).join(', ')}`;
     if (navigator.share) {
       try { await navigator.share({ title: 'Royal Court Sports 2026', text }); } catch {}
     } else {
@@ -46,7 +48,8 @@ export default function Confirmation({ lang, formData, selectedGames, regId, onR
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{t('selectedGames', lang)}</p>
           <div className="flex flex-wrap gap-2">
             {selectedGames.map(id => {
-              const g = GAMES_DB.find(x => x.id === id);
+              const allGames = [...GAMES_DB, ...customGames];
+              const g = allGames.find(x => x.id === id);
               return g ? (
                 <span key={id} className="bg-background px-3 py-1 rounded-full border border-border font-bold text-xs">
                   {g.emoji} {lang === 'EN' ? g.nameEn : g.nameHi}
