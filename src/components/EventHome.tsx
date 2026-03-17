@@ -78,30 +78,32 @@ export default function EventHome({ lang, setPage, customGames = [] }: EventHome
           </p>
 
           {/* Registration Deadline Alert */}
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-2xl p-4 mb-8 max-w-sm mx-auto shadow-sm flex flex-col items-center gap-2">
+          <div className="bg-card border-2 border-destructive shadow-[0_0_20px_rgba(239,68,68,0.3)] text-foreground rounded-3xl p-6 mb-8 max-w-md mx-auto flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
-              <Calendar size={20} className="text-destructive" />
-              <span className="font-bold text-sm md:text-base text-destructive">
-                {lang === 'EN' ? 'Registration Closes In:' : 'पंजीकरण बंद होगा:'}
+              <Calendar size={28} className="text-destructive animate-pulse" />
+              <span className="font-black text-lg md:text-xl text-destructive tracking-widest uppercase">
+                {lang === 'EN' ? 'Registration Closes In' : 'पंजीकरण बंद होगा'}
               </span>
             </div>
-            <div className="flex gap-2 text-center mt-1">
+            
+            <div className="flex gap-3 text-center w-full justify-center">
               {[
                 { value: timeLeft.days, label: lang === 'EN' ? 'Days' : 'दिन' },
                 { value: timeLeft.hours, label: lang === 'EN' ? 'Hrs' : 'घंटे' },
                 { value: timeLeft.minutes, label: lang === 'EN' ? 'Mins' : 'मिनट' },
                 { value: timeLeft.seconds, label: lang === 'EN' ? 'Secs' : 'सेकंड' }
               ].map((item, i) => (
-                <div key={i} className="bg-destructive/10 rounded-lg p-2 min-w-[50px] shadow-sm">
-                  <p className="text-xl font-black font-mono leading-none">{item.value.toString().padStart(2, '0')}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-wider mt-1">{item.label}</p>
+                <div key={i} className="bg-destructive/10 border border-destructive/20 rounded-2xl p-3 min-w-[70px] shadow-inner flex-1 bg-gradient-to-b from-card to-destructive/10">
+                  <p className="text-3xl md:text-4xl font-black font-mono leading-none tracking-tight text-destructive drop-shadow-sm">{item.value.toString().padStart(2, '0')}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest mt-2 opacity-80">{item.label}</p>
                 </div>
               ))}
             </div>
-            <p className="text-xs font-semibold text-center text-foreground/70 mt-2">
+            
+            <p className="text-sm font-bold text-center text-foreground/80 mt-2 bg-secondary/20 px-4 py-1.5 rounded-full inline-block">
               {lang === 'EN' 
-                ? 'Competition begins on the 29th!'
-                : 'प्रतियोगिता 29 तारीख से शुरू होगी!'}
+                ? '🔥 Competition begins on the 29th!'
+                : '🔥 प्रतियोगिता 29 तारीख से शुरू होगी!'}
             </p>
           </div>
 

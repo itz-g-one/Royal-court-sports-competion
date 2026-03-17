@@ -19,6 +19,7 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
   const [filterGender, setFilterGender] = useState('All');
   const [filterTower, setFilterTower] = useState('All');
   const [filterGame, setFilterGame] = useState('All');
+  const [filterAgeGroup, setFilterAgeGroup] = useState('All');
 
   // Form state for custom game
   const [newGame, setNewGame] = useState({ nameEn: '', nameHi: '', emoji: '🎯', gender: 'Both', minAge: '', maxAge: '', description: '', descriptionHi: '' });
@@ -64,9 +65,19 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
       const matchGender = filterGender === 'All' || r.gender === filterGender;
       const matchTower = filterTower === 'All' || r.tower === filterTower;
       const matchGame = filterGame === 'All' || r.games.includes(filterGame);
-      return matchSearch && matchGender && matchTower && matchGame;
+      
+      let matchAge = true;
+      if (filterAgeGroup !== 'All') {
+        const age = parseInt(r.age);
+        if (filterAgeGroup === 'Under 18') matchAge = age < 18;
+        else if (filterAgeGroup === '18-30') matchAge = age >= 18 && age <= 30;
+        else if (filterAgeGroup === '31-50') matchAge = age >= 31 && age <= 50;
+        else if (filterAgeGroup === '51+') matchAge = age >= 51;
+      }
+
+      return matchSearch && matchGender && matchTower && matchGame && matchAge;
     });
-  }, [players, search, filterGender, filterTower, filterGame]);
+  }, [players, search, filterGender, filterTower, filterGame, filterAgeGroup]);
 
   const handleDelete = (id: string) => {
     if (confirm(t('deleteConfirm', lang))) {
@@ -240,6 +251,13 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
               <select value={filterTower} onChange={e => setFilterTower(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
                 <option value="All">{t('all', lang)} {t('tower', lang)}</option>
                 {towers.map(tw => <option key={tw} value={tw}>{tw}</option>)}
+              </select>
+              <select value={filterAgeGroup} onChange={e => setFilterAgeGroup(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
+                <option value="All">{t('all', lang)} Age</option>
+                <option value="Under 18">Under 18</option>
+                <option value="18-30">18 - 30</option>
+                <option value="31-50">31 - 50</option>
+                <option value="51+">51+</option>
               </select>
               <select value={filterGame} onChange={e => setFilterGame(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
                 <option value="All">{t('all', lang)} {t('games', lang)}</option>

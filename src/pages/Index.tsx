@@ -120,8 +120,12 @@ const Index = () => {
   const handleGameToggle = useCallback((gameId: string) => {
     setSelectedGames(prev => {
       if (prev.includes(gameId)) return prev.filter(id => id !== gameId);
-      if (prev.length >= 2) {
-        toast.warning(t('max2Games', lang));
+      
+      const hasMarathon = prev.includes('marathon') || gameId === 'marathon';
+      const maxAllowed = hasMarathon ? 3 : 2;
+      
+      if (prev.length >= maxAllowed) {
+        toast.warning(hasMarathon ? t('max2Games', lang) + ' (+ Marathon)' : t('max2Games', lang));
         return prev;
       }
       return [...prev, gameId];
