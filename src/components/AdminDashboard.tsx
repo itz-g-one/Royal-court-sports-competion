@@ -13,13 +13,26 @@ interface AdminDashboardProps {
 
 type Tab = 'players' | 'games';
 
+const AGE_GROUP_OPTIONS = ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18-34', '35+'] as const;
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'] as const;
+
+function normalizeAgeGroup(ageValue: string) {
+  if (AGE_GROUP_OPTIONS.includes(ageValue as (typeof AGE_GROUP_OPTIONS)[number])) return ageValue;
+
+  const age = Number.parseInt(ageValue, 10);
+  if (Number.isNaN(age)) return ageValue;
+  if (age >= 18 && age <= 34) return '18-34';
+  if (age >= 35) return '35+';
+  return String(age);
+}
+
 export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) {
   const [tab, setTab] = useState<Tab>('players');
   const [search, setSearch] = useState('');
-  const [filterGender, setFilterGender] = useState('All');
-  const [filterTower, setFilterTower] = useState('All');
-  const [filterGame, setFilterGame] = useState('All');
-  const [filterAgeGroup, setFilterAgeGroup] = useState('All');
+  const [filterGenders, setFilterGenders] = useState<string[]>([]);
+  const [filterTowers, setFilterTowers] = useState<string[]>([]);
+  const [filterGames, setFilterGames] = useState<string[]>([]);
+  const [filterAgeGroups, setFilterAgeGroups] = useState<string[]>([]);
 
   // Form state for custom game
   const [newGame, setNewGame] = useState({ nameEn: '', nameHi: '', emoji: '🎯', gender: 'Both', minAge: '', maxAge: '', description: '', descriptionHi: '' });
@@ -58,26 +71,25 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
   const disabledGames: string[] = gamesInfo?.disabledGames || [];
   const allGamesList = [...GAMES_DB, ...customGames];
 
+  const toggleFilterValue = (value: string, selected: string[], setSelected: (values: string[]) => void) => {
+    setSelected(selected.includes(value)
+      ? selected.filter(item => item !== value)
+      : [...selected, value]
+    );
+  };
+
   const filtered = useMemo(() => {
     return players.filter(r => {
       const q = search.toLowerCase();
       const matchSearch = !q || r.name.toLowerCase().includes(q) || r.flat.toLowerCase().includes(q) || r.tower.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
-      const matchGender = filterGender === 'All' || r.gender === filterGender;
-      const matchTower = filterTower === 'All' || r.tower === filterTower;
-      const matchGame = filterGame === 'All' || r.games.includes(filterGame);
-      
-      let matchAge = true;
-      if (filterAgeGroup !== 'All') {
-        const age = parseInt(r.age);
-        if (filterAgeGroup === 'Under 18') matchAge = age < 18;
-        else if (filterAgeGroup === '18-30') matchAge = age >= 18 && age <= 30;
-        else if (filterAgeGroup === '31-50') matchAge = age >= 31 && age <= 50;
-        else if (filterAgeGroup === '51+') matchAge = age >= 51;
-      }
+      const matchGender = filterGenders.length === 0 || filterGenders.includes(r.gender);
+      const matchTower = filterTowers.length === 0 || filterTowers.includes(r.tower);
+      const matchGame = filterGames.length === 0 || filterGames.some(gameId => r.games.includes(gameId));
+      const matchAge = filterAgeGroups.length === 0 || filterAgeGroups.includes(normalizeAgeGroup(r.age));
 
       return matchSearch && matchGender && matchTower && matchGame && matchAge;
     });
-  }, [players, search, filterGender, filterTower, filterGame, filterAgeGroup]);
+  }, [players, search, filterGenders, filterTowers, filterGames, filterAgeGroups]);
 
   const handleDelete = (id: string) => {
     if (confirm(t('deleteConfirm', lang))) {
@@ -241,31 +253,40 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('search', lang)} className="w-full bg-card border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:border-primary outline-none" />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <select value={filterGender} onChange={e => setFilterGender(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
-                <option value="All">{t('all', lang)} {t('gender', lang)}</option>
-                <option value="Male">{t('male', lang)}</option>
-                <option value="Female">{t('female', lang)}</option>
-                <option value="Other">{t('other', lang)}</option>
-              </select>
-              <select value={filterTower} onChange={e => setFilterTower(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
-                <option value="All">{t('all', lang)} {t('tower', lang)}</option>
-                {towers.map(tw => <option key={tw} value={tw}>{tw}</option>)}
-              </select>
-              <select value={filterAgeGroup} onChange={e => setFilterAgeGroup(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
-                <option value="All">{t('all', lang)} Age</option>
-                <option value="Under 18">Under 18</option>
-                <option value="18-30">18 - 30</option>
-                <option value="31-50">31 - 50</option>
-                <option value="51+">51+</option>
-              </select>
-              <select value={filterGame} onChange={e => setFilterGame(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold">
-                <option value="All">{t('all', lang)} {t('games', lang)}</option>
-                {allGamesList.map(g => <option key={g.id} value={g.id}>{g.emoji} {lang === 'EN' ? g.nameEn : g.nameHi}</option>)}
-              </select>
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-3">
+              <FilterGroup
+                label={t('gender', lang)}
+                options={GENDER_OPTIONS.map(value => ({ value, label: t(value.toLowerCase(), lang) }))}
+                selected={filterGenders}
+                onToggle={value => toggleFilterValue(value, filterGenders, setFilterGenders)}
+                onClear={() => setFilterGenders([])}
+              />
+              <FilterGroup
+                label={t('tower', lang)}
+                options={towers.map(value => ({ value, label: value }))}
+                selected={filterTowers}
+                onToggle={value => toggleFilterValue(value, filterTowers, setFilterTowers)}
+                onClear={() => setFilterTowers([])}
+              />
+              <FilterGroup
+                label={t('age', lang)}
+                options={AGE_GROUP_OPTIONS.map(value => ({ value, label: value }))}
+                selected={filterAgeGroups}
+                onToggle={value => toggleFilterValue(value, filterAgeGroups, setFilterAgeGroups)}
+                onClear={() => setFilterAgeGroups([])}
+              />
+              <FilterGroup
+                label={t('games', lang)}
+                options={allGamesList.map(game => ({ value: game.id, label: `${game.emoji} ${lang === 'EN' ? game.nameEn : game.nameHi}` }))}
+                selected={filterGames}
+                onToggle={value => toggleFilterValue(value, filterGames, setFilterGames)}
+                onClear={() => setFilterGames([])}
+              />
+            </div>
+            <div className="flex justify-end">
               <button
                 onClick={() => exportToCSV(filtered)}
-                className="ml-auto flex items-center gap-1.5 bg-success text-success-foreground px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-1.5 bg-success text-success-foreground px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition-transform"
               >
                 <Download size={14} /> {t('exportCSV', lang)}
               </button>
@@ -315,6 +336,52 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function FilterGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+  selected: string[];
+  onToggle: (value: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+        {selected.length > 0 && (
+          <button type="button" onClick={onClear} className="text-[11px] font-bold text-primary">
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {options.map(option => {
+          const isSelected = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onToggle(option.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
+                isSelected
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-background text-muted-foreground'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
