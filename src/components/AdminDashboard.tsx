@@ -26,6 +26,21 @@ function normalizeAgeGroup(ageValue: string) {
   return String(age);
 }
 
+function formatRegistrationTime(timestamp: string) {
+  if (!timestamp) return '-';
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return timestamp;
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) {
   const [tab, setTab] = useState<Tab>('players');
   const [search, setSearch] = useState('');
@@ -305,11 +320,13 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
                   <tr className="bg-card border-b border-border">
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('regId', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('name', lang)}</th>
+                    <th className="text-left p-3 font-bold text-muted-foreground">{t('contactNumber', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('age', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('gender', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('tower', lang)}/{t('flatNo', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('game1', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('game2', lang)}</th>
+                    <th className="text-left p-3 font-bold text-muted-foreground">{t('registeredAt', lang)}</th>
                     <th className="text-left p-3 font-bold text-muted-foreground">{t('actions', lang)}</th>
                   </tr>
                 </thead>
@@ -318,11 +335,13 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
                     <tr key={r.id} className={`border-b border-border last:border-0 ${r.gender==='Male'?'bg-male/5':r.gender==='Female'?'bg-female/5':'bg-card'}`}>
                       <td className="p-3 font-mono font-bold">{r.id}</td>
                       <td className="p-3 font-semibold">{r.name}</td>
+                      <td className="p-3 font-medium">{r.phone || '-'}</td>
                       <td className="p-3">{r.age}</td>
                       <td className="p-3">{r.gender}</td>
                       <td className="p-3">{r.tower}-{r.flat}</td>
                       <td className="p-3">{allGamesList.find(g => g.id === r.games[0])?.emoji} {lang === 'EN' ? allGamesList.find(g => g.id === r.games[0])?.nameEn : allGamesList.find(g => g.id === r.games[0])?.nameHi}</td>
                       <td className="p-3">{r.games[1] ? `${allGamesList.find(g => g.id === r.games[1])?.emoji} ${lang === 'EN' ? allGamesList.find(g => g.id === r.games[1])?.nameEn : allGamesList.find(g => g.id === r.games[1])?.nameHi}` : '-'}</td>
+                      <td className="p-3 whitespace-nowrap">{formatRegistrationTime(r.timestamp)}</td>
                       <td className="p-3">
                         <button onClick={() => handleDelete(r.id)} disabled={deletePlayerMut.isPending} className="text-destructive hover:bg-destructive/10 p-1.5 rounded-lg transition-colors">
                           <Trash2 size={14} />
