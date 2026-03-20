@@ -84,6 +84,14 @@ const Index = () => {
       toast.error(t('selectMin1', lang));
       return;
     }
+
+    const eligibleGameIds = new Set(eligibleGames.map(game => game.id));
+    const hasInvalidSelection = selectedGames.some(gameId => !eligibleGameIds.has(gameId));
+    if (hasInvalidSelection) {
+      toast.error(lang === 'EN' ? 'Please select games only from your age category' : 'कृपया अपनी आयु श्रेणी के अनुसार ही खेल चुनें');
+      setSelectedGames([]);
+      return;
+    }
     
     // Check dupe locally against fetched players
     const dup = players?.find(r =>
@@ -115,9 +123,15 @@ const Index = () => {
       success: lang === 'EN' ? 'Registration Successful!' : 'पंजीकरण सफल!',
       error: lang === 'EN' ? 'Registration Failed' : 'पंजीकरण विफल'
     });
-  }, [formData, selectedGames, lang, players, registerMutation]);
+  }, [eligibleGames, formData, selectedGames, lang, players, registerMutation]);
 
   const handleGameToggle = useCallback((gameId: string) => {
+    const eligibleGameIds = new Set(eligibleGames.map(game => game.id));
+    if (!eligibleGameIds.has(gameId)) {
+      toast.error(lang === 'EN' ? 'This game is not available for the selected age category' : 'यह खेल चुनी हुई आयु श्रेणी के लिए उपलब्ध नहीं है');
+      return;
+    }
+
     setSelectedGames(prev => {
       if (prev.includes(gameId)) return prev.filter(id => id !== gameId);
       
@@ -130,7 +144,7 @@ const Index = () => {
       }
       return [...prev, gameId];
     });
-  }, [lang]);
+  }, [eligibleGames, lang]);
 
   const resetForm = useCallback(() => {
     setFormData({ name: '', phone: '', tower: '', flat: '', age: '', gender: '', maritalStatus: '' });

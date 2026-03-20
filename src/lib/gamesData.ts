@@ -18,7 +18,7 @@ export const GAMES_DB: Game[] = [
   { id: 'spoon', nameEn: 'Spoon & Lemon Race', nameHi: 'चम्मच और नींबू दौड़', emoji: '🍋', gender: 'Female', description: 'Girls 11+, married women eligible', descriptionHi: 'लड़कियाँ 11+, विवाहित महिलाएं पात्र' },
   { id: 'musical', nameEn: 'Musical Chair', nameHi: 'म्यूजिकल चेयर', emoji: '🪑', gender: 'Female', description: 'Married women 18+ only', descriptionHi: 'केवल विवाहित महिलाएं 18+' },
   { id: 'marathon', nameEn: 'Marathon', nameHi: 'मैराथन', emoji: '🏁', gender: 'Both', description: 'Men & Women 30+', descriptionHi: 'पुरुष और महिलाएं 30+' },
-  { id: 'volleyball', nameEn: 'Volleyball', nameHi: 'वॉलीबॉल', emoji: '🏐', gender: 'Male', description: 'Captain select teams', descriptionHi: 'कप्तान द्वारा टीम चयन' },
+  { id: 'volleyball', nameEn: 'Volleyball', nameHi: 'वॉलीबॉल', emoji: '🏐', gender: 'Male', description: 'Captain select teams, ages 16+', descriptionHi: 'कप्तान द्वारा टीम चयन, उम्र 16+' },
   { id: 'badminton', nameEn: 'Badminton', nameHi: 'बैडमिंटन', emoji: '🏸', gender: 'Both', description: 'Junior 10-15, Open 16+', descriptionHi: 'जूनियर 10-15, ओपन 16+' },
   { id: 'chess', nameEn: 'Chess', nameHi: 'शतरंज', emoji: '♟️', gender: 'Both', description: 'Kids 8-14, Open 15+', descriptionHi: 'बच्चे 8-14, ओपन 15+' },
 ];
@@ -58,17 +58,19 @@ export function getEligibleGames(
     if (gender === 'Male') {
       if (age >= 5 && age <= 7) return ['100m'].includes(game.id);
       if (age >= 8 && age <= 10) return ['100m', 'cycle', 'chess'].includes(game.id);
-      if (age >= 11 && age <= 16) return ['100m', 'longjump', 'cycle', 'chess', 'badminton', 'kho'].includes(game.id);
-      if (age === 17) return ['chess', 'badminton', 'kho'].includes(game.id);
-      if (age >= 18 && age < 30) return ['chess', 'badminton'].includes(game.id);
-      if (age >= 30 && age < 35) return ['chess', 'badminton', 'marathon'].includes(game.id);
+      if (age >= 11 && age <= 12) return ['100m', 'longjump', 'cycle', 'chess', 'badminton'].includes(game.id);
+      if (age >= 13 && age <= 15) return ['100m', 'longjump', 'cycle', 'chess', 'badminton', 'kho'].includes(game.id);
+      if (age >= 16 && age <= 17) return ['100m', 'longjump', 'cycle', 'chess', 'badminton', 'kho', 'volleyball'].includes(game.id);
+      if (age >= 18 && age < 30) return ['chess', 'badminton', 'volleyball'].includes(game.id);
+      if (age >= 30 && age < 35) return ['chess', 'badminton', 'marathon', 'volleyball'].includes(game.id);
       if (age >= 35) return ['longjump', 'chess', 'badminton', 'marathon', 'volleyball'].includes(game.id);
     }
 
     if (gender === 'Female') {
       if (age >= 5 && age <= 7) return ['100m'].includes(game.id);
       if (age >= 8 && age <= 10) return ['100m', 'chess'].includes(game.id);
-      if (age >= 11 && age <= 14) return ['100m', 'longjump', 'chess', 'spoon', 'badminton', 'kho'].includes(game.id);
+      if (age >= 11 && age <= 12) return ['100m', 'longjump', 'chess', 'spoon', 'badminton'].includes(game.id);
+      if (age >= 13 && age <= 14) return ['100m', 'longjump', 'chess', 'spoon', 'badminton', 'kho'].includes(game.id);
       if (age >= 15 && age <= 17) {
         const eligible = ['100m', 'longjump', 'chess', 'badminton', 'kho'];
         if (maritalStatus !== 'Married') eligible.push('spoon');
