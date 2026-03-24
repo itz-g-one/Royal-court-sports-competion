@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { t, type Lang } from '@/lib/translations';
-import { deletePlayer, exportToCSV, fetchPlayers, fetchGamesInfo, toggleGameDisabledApi, addCustomGameApi } from '@/lib/storage';
-import { GAMES_DB, type Game } from '@/lib/gamesData';
+import { deletePlayer, exportToCSV, fetchPlayers, fetchGamesInfo, toggleGameDisabledApi, addCustomGameApi, toggleGameEntryBlockApi } from '@/lib/storage';
+import { ENTRY_GENDERS, GAMES_DB, getGameAllowedAgeOptions, getGameAllowedGenders, type EntryGender, type Game, type GameEntryBlock } from '@/lib/gamesData';
 import { toast } from 'sonner';
 import { Trash2, Download, LogOut, Search, ToggleLeft, ToggleRight, PlusCircle } from 'lucide-react';
 
@@ -39,6 +39,16 @@ function formatRegistrationTime(timestamp: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function getEmptyEntryBlock(): GameEntryBlock {
+  return {
+    blockedGenders: [],
+    blockedAges: {
+      Male: [],
+      Female: [],
+    },
+  };
 }
 
 export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) {
@@ -82,8 +92,18 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
     }
   });
 
+  const toggleEntryBlockMut = useMutation({
+    mutationFn: ({ gameId, type, gender, age }: { gameId: string; type: 'gender' | 'age'; gender: EntryGender; age?: string }) =>
+      toggleGameEntryBlockApi(gameId, type, gender, age),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gamesInfo'] });
+      toast.success('Entry rules updated');
+    }
+  });
+
   const customGames: Game[] = gamesInfo?.customGames || [];
   const disabledGames: string[] = gamesInfo?.disabledGames || [];
+  const entryBlocks = gamesInfo?.entryBlocks || {};
   const allGamesList = [...GAMES_DB, ...customGames];
 
   const toggleFilterValue = (value: string, selected: string[], setSelected: (values: string[]) => void) => {
@@ -114,6 +134,10 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
 
   const handleToggleGame = (gameId: string) => {
     toggleDisabledMut.mutate(gameId);
+  };
+
+  const handleToggleEntryBlock = (gameId: string, type: 'gender' | 'age', gender: EntryGender, age?: string) => {
+    toggleEntryBlockMut.mutate({ gameId, type, gender, age });
   };
 
   const handleAddGame = (e: React.FormEvent) => {
@@ -210,33 +234,107 @@ export default function AdminDashboard({ lang, onLogout }: AdminDashboardProps) 
             {gamesLoading ? <p>Loading games...</p> : allGamesList.map(game => {
               const isDisabled = disabledGames.includes(game.id);
               const regCount = gameRegCounts[game.id] || 0;
+              const gameBlock = entryBlocks[game.id] || getEmptyEntryBlock();
               return (
                 <div
                   key={game.id}
-                  className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
+                  className={`rounded-2xl border-2 p-4 transition-all ${
                     isDisabled ? 'border-border bg-muted/30 opacity-60' : 'border-border bg-card shadow-sm'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{game.emoji}</span>
-                    <div>
-                      <p className="font-bold text-sm">{lang === 'EN' ? game.nameEn : game.nameHi}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {game.id.startsWith('custom_') && <span className="text-primary font-bold mr-1">[CUSTOM]</span>}
-                        {lang === 'EN' ? game.description : game.descriptionHi} · {regCount} {t('players', lang).toLowerCase()}
-                      </p>
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{game.emoji}</span>
+                        <div>
+                          <p className="font-bold text-sm">{lang === 'EN' ? game.nameEn : game.nameHi}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {game.id.startsWith('custom_') && <span className="text-primary font-bold mr-1">[CUSTOM]</span>}
+                            {lang === 'EN' ? game.description : game.descriptionHi} · {regCount} {t('players', lang).toLowerCase()}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleGame(game.id)}
+                        disabled={toggleDisabledMut.isPending}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          isDisabled ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
+                        }`}
+                      >
+                        {isDisabled ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
+                        {isDisabled ? t('gameDisabled', lang) : t('gameEnabled', lang)}
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-border bg-background/60 p-3 space-y-3">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Entry Controls</p>
+                        <p className="text-[11px] text-muted-foreground">Disable specific gender or age entries for this game.</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {ENTRY_GENDERS.map(gender => {
+                          const supportedGenders = getGameAllowedGenders(game);
+                          const isSupported = supportedGenders.includes(gender);
+                          const ageOptions = getGameAllowedAgeOptions(game, gender);
+                          const isGenderBlocked = gameBlock.blockedGenders.includes(gender);
+
+                          return (
+                            <div key={`${game.id}-${gender}`} className="rounded-xl border border-border bg-card p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-bold">{t(gender.toLowerCase(), lang)}</p>
+                                  <p className="text-[11px] text-muted-foreground">{isSupported ? 'Default category available' : 'Not available for this game'}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={!isSupported || toggleEntryBlockMut.isPending}
+                                  onClick={() => handleToggleEntryBlock(game.id, 'gender', gender)}
+                                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                                    !isSupported
+                                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                      : isGenderBlocked
+                                        ? 'bg-destructive/10 text-destructive'
+                                        : 'bg-success/10 text-success'
+                                  }`}
+                                >
+                                  {!isSupported ? 'Unavailable' : isGenderBlocked ? 'Entry Off' : 'Entry On'}
+                                </button>
+                              </div>
+
+                              {isSupported && ageOptions.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Age Groups</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {ageOptions.map(ageOption => {
+                                      const isAgeBlocked = gameBlock.blockedAges[gender].includes(ageOption);
+                                      return (
+                                        <button
+                                          key={`${game.id}-${gender}-${ageOption}`}
+                                          type="button"
+                                          disabled={isGenderBlocked || toggleEntryBlockMut.isPending}
+                                          onClick={() => handleToggleEntryBlock(game.id, 'age', gender, ageOption)}
+                                          className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
+                                            isGenderBlocked
+                                              ? 'border-border bg-muted text-muted-foreground cursor-not-allowed'
+                                              : isAgeBlocked
+                                                ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                                                : 'border-success/30 bg-success/10 text-success'
+                                          }`}
+                                        >
+                                          {ageOption} {isAgeBlocked ? 'Off' : 'On'}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleToggleGame(game.id)}
-                    disabled={toggleDisabledMut.isPending}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isDisabled ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
-                    }`}
-                  >
-                    {isDisabled ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
-                    {isDisabled ? t('gameDisabled', lang) : t('gameEnabled', lang)}
-                  </button>
                 </div>
               );
             })}

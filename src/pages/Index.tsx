@@ -50,10 +50,11 @@ const Index = () => {
 
   const disabledGames = gamesInfo?.disabledGames || [];
   const customGames = gamesInfo?.customGames || [];
+  const entryBlocks = gamesInfo?.entryBlocks || {};
 
   const eligibleGames = useMemo(() =>
-    getEligibleGames(formData.age, formData.gender, formData.maritalStatus, disabledGames, customGames),
-    [formData.age, formData.gender, formData.maritalStatus, disabledGames, customGames]
+    getEligibleGames(formData.age, formData.gender, formData.maritalStatus, disabledGames, customGames, entryBlocks),
+    [formData.age, formData.gender, formData.maritalStatus, disabledGames, customGames, entryBlocks]
   );
 
   const handleFormNext = useCallback(() => {

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { EntryGender, GameEntryBlock, GameEntryBlocks } from '@/lib/gamesData';
 
 // IMPORTANT: The user must provide these in their .env.local file or Vercel Environment Variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -20,6 +21,45 @@ export interface Registration {
   maritalStatus: string;
   games: string[];
   timestamp: string;
+}
+
+const BLOCK_GENDER_PREFIX = 'block:gender:';
+const BLOCK_AGE_PREFIX = 'block:age:';
+
+function emptyGameEntryBlock(): GameEntryBlock {
+  return {
+    blockedGenders: [],
+    blockedAges: {
+      Male: [],
+      Female: [],
+    },
+  };
+}
+
+function parseGameEntryBlocks(ids: string[]): GameEntryBlocks {
+  const entryBlocks: GameEntryBlocks = {};
+
+  ids.forEach(id => {
+    if (id.startsWith(BLOCK_GENDER_PREFIX)) {
+      const [, , gameId, gender] = id.split(':');
+      if (!gameId || (gender !== 'Male' && gender !== 'Female')) return;
+      const block = entryBlocks[gameId] || emptyGameEntryBlock();
+      if (!block.blockedGenders.includes(gender)) block.blockedGenders.push(gender);
+      entryBlocks[gameId] = block;
+      return;
+    }
+
+    if (id.startsWith(BLOCK_AGE_PREFIX)) {
+      const [, , gameId, gender, ...ageParts] = id.split(':');
+      const age = ageParts.join(':');
+      if (!gameId || (gender !== 'Male' && gender !== 'Female') || !age) return;
+      const block = entryBlocks[gameId] || emptyGameEntryBlock();
+      if (!block.blockedAges[gender].includes(age)) block.blockedAges[gender].push(age);
+      entryBlocks[gameId] = block;
+    }
+  });
+
+  return entryBlocks;
 }
 
 // --- Input Sanitization ---
@@ -74,8 +114,8 @@ export async function deletePlayer(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function fetchGamesInfo(): Promise<{ customGames: any[], disabledGames: string[] }> {
-  if (!supabaseUrl) return { customGames: [], disabledGames: [] };
+export async function fetchGamesInfo(): Promise<{ customGames: any[], disabledGames: string[], entryBlocks: GameEntryBlocks }> {
+  if (!supabaseUrl) return { customGames: [], disabledGames: [], entryBlocks: {} };
   
   const { data: cGames, error: cErr } = await supabase.from('custom_games').select('*');
   if (cErr) throw new Error(cErr.message);
@@ -85,13 +125,16 @@ export async function fetchGamesInfo(): Promise<{ customGames: any[], disabledGa
 
   return {
     customGames: cGames || [],
-    disabledGames: dGames ? dGames.map(d => d.id) : []
+    disabledGames: dGames ? dGames.map(d => d.id).filter((id: string) => !id.includes(':')) : [],
+    entryBlocks: parseGameEntryBlocks(dGames ? dGames.map(d => d.id) : []),
   };
 }
 
 export async function toggleGameDisabledApi(gameId: string): Promise<string[]> {
+  if (!supabaseUrl) return [];
+
   // Check if it exists
-  const { data } = await supabase.from('disabled_games').select('id').eq('id', gameId).single();
+  const { data } = await supabase.from('disabled_games').select('id').eq('id', gameId).maybeSingle();
   
   if (data) {
     // Exists, so remove it
@@ -104,6 +147,25 @@ export async function toggleGameDisabledApi(gameId: string): Promise<string[]> {
   // Return the new list
   const { data: list } = await supabase.from('disabled_games').select('id');
   return list ? list.map(l => l.id) : [];
+}
+
+export async function toggleGameEntryBlockApi(gameId: string, type: 'gender' | 'age', gender: EntryGender, age?: string): Promise<GameEntryBlocks> {
+  if (!supabaseUrl) return {};
+
+  const blockId = type === 'gender'
+    ? `${BLOCK_GENDER_PREFIX}${gameId}:${gender}`
+    : `${BLOCK_AGE_PREFIX}${gameId}:${gender}:${age}`;
+
+  const { data } = await supabase.from('disabled_games').select('id').eq('id', blockId).maybeSingle();
+
+  if (data) {
+    await supabase.from('disabled_games').delete().eq('id', blockId);
+  } else {
+    await supabase.from('disabled_games').insert([{ id: blockId }]);
+  }
+
+  const { data: list } = await supabase.from('disabled_games').select('id');
+  return parseGameEntryBlocks(list ? list.map(item => item.id) : []);
 }
 
 export async function addCustomGameApi(game: any): Promise<any[]> {
